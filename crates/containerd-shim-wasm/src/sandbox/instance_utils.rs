@@ -49,7 +49,7 @@ pub fn determine_rootdir(
         .root
         .unwrap_or_else(|| rootdir.as_ref().to_owned())
         .join(namespace);
-    log::info!("container runtime root path is {path:?}");
+    tracing::info!("container runtime root path is {path:?}");
     Ok(path)
 }
 

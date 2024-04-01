@@ -40,9 +40,9 @@ where
         // start logging
         // to enable logging run `export RUST_LOG=trace` and append cargo command with
         // --show-output before running test
-        let _ = env_logger::try_init();
+        // let _ = env_logger::try_init();
 
-        log::info!("creating new wasi test");
+        tracing::info!("creating new wasi test");
 
         let tempdir = tempfile::tempdir()?;
         let dir = tempdir.path();
@@ -73,7 +73,7 @@ where
         let dir = self.tempdir.path();
         let start_fn = start_fn.as_ref();
 
-        log::info!("setting wasi test start_fn to {start_fn:?}");
+        tracing::info!("setting wasi test start_fn to {start_fn:?}");
 
         let entrypoint = match start_fn {
             "" => "/hello.wasm".to_string(),
@@ -97,7 +97,7 @@ where
     pub fn with_wasm(self, wasmbytes: impl AsRef<[u8]>) -> Result<Self> {
         let dir = self.tempdir.path();
 
-        log::info!(
+        tracing::info!(
             "setting wasi test wasm file [u8; {}]",
             wasmbytes.as_ref().len()
         );
@@ -111,7 +111,7 @@ where
     pub fn with_stdin(self, stdin: impl AsRef<[u8]>) -> Result<Self> {
         let dir = self.tempdir.path();
 
-        log::info!("setting wasi test stdin to [u8; {}]", stdin.as_ref().len());
+        tracing::info!("setting wasi test stdin to [u8; {}]", stdin.as_ref().len());
 
         write(dir.join("stdin"), stdin)?;
 
@@ -155,7 +155,7 @@ where
         let tempdir = self.tempdir;
         let dir = tempdir.path();
 
-        log::info!("building wasi test");
+        tracing::info!("building wasi test");
 
         let mut cfg = InstanceConfig::new(
             WasiInstance::Engine::default(),
@@ -185,13 +185,13 @@ where
     }
 
     pub fn start(&self) -> Result<&Self> {
-        log::info!("starting wasi test");
+        tracing::info!("starting wasi test");
         self.instance.start()?;
         Ok(self)
     }
 
     pub fn delete(&self) -> Result<&Self> {
-        log::info!("deleting wasi test");
+        tracing::info!("deleting wasi test");
         self.instance.delete()?;
         Ok(self)
     }
@@ -199,7 +199,7 @@ where
     pub fn wait(&self, timeout: Duration) -> Result<(u32, String, String)> {
         let dir = self.tempdir.path();
 
-        log::info!("waiting wasi test");
+        tracing::info!("waiting wasi test");
         let (status, _) = match self.instance.wait_timeout(timeout) {
             Some(res) => res,
             None => {
@@ -213,7 +213,7 @@ where
 
         self.instance.delete()?;
 
-        log::info!("wasi test status is {status}");
+        tracing::info!("wasi test status is {status}");
 
         Ok((status, stdout, stderr))
     }
@@ -237,14 +237,14 @@ pub mod oci_helpers {
 
     impl Drop for OCICleanup {
         fn drop(&mut self) {
-            log::debug!("dropping OCIGuard");
+            tracing::debug!("dropping OCIGuard");
             clean_container(self.container_name.clone()).unwrap();
             clean_image(self.image_name.clone()).unwrap();
         }
     }
 
     pub fn clean_container(container_name: String) -> Result<()> {
-        log::debug!("deleting container '{}'", container_name);
+        tracing::debug!("deleting container '{}'", container_name);
         let success = Command::new("ctr")
             .arg("-n")
             .arg(TEST_NAMESPACE)
@@ -342,7 +342,7 @@ pub mod oci_helpers {
             Err(_) => return Ok(()), // doesn't exist
         };
 
-        log::debug!("deleting image '{}'", image_name);
+        tracing::debug!("deleting image '{}'", image_name);
         let success = Command::new("ctr")
             .arg("-n")
             .arg(TEST_NAMESPACE)
@@ -367,7 +367,7 @@ pub mod oci_helpers {
     pub fn wait_for_content_removal(content_sha: &str) -> Result<(), anyhow::Error> {
         let start = Instant::now();
         let timeout = Duration::from_secs(60);
-        log::info!("waiting for content to be removed: {}", &content_sha);
+        tracing::info!("waiting for content to be removed: {}", &content_sha);
         loop {
             let output = Command::new("ctr")
                 .arg("-n")
@@ -382,7 +382,7 @@ pub mod oci_helpers {
             }
 
             if start.elapsed() > timeout {
-                log::warn!("didn't clean content fully");
+                tracing::warn!("didn't clean content fully");
                 break;
             }
         }
@@ -390,7 +390,7 @@ pub mod oci_helpers {
     }
 
     fn get_image_sha(image_name: &str) -> Result<String> {
-        log::info!("getting image sha for '{}'", image_name);
+        tracing::info!("getting image sha for '{}'", image_name);
         let mut grep = Command::new("grep")
             .arg(image_name)
             .stdout(Stdio::piped())
@@ -407,14 +407,14 @@ pub mod oci_helpers {
 
         let output = grep.wait_with_output()?;
         let stdout = String::from_utf8(output.stdout)?;
-        log::warn!("stdout: {}", stdout);
+        tracing::warn!("stdout: {}", stdout);
 
         let parts: Vec<&str> = stdout.trim().split(' ').collect();
         if parts.len() < 3 {
             bail!("failed to get image sha");
         }
         let sha = parts[2];
-        log::warn!("sha: {}", sha);
+        tracing::warn!("sha: {}", sha);
         Ok(sha.to_string())
     }
 
@@ -436,7 +436,7 @@ pub mod oci_helpers {
 
         let output = grep.wait_with_output()?;
         let stdout = String::from_utf8(output.stdout)?;
-        log::debug!("stdout: {}", stdout);
+        tracing::debug!("stdout: {}", stdout);
         let label: Vec<&str> = stdout.split('=').collect();
 
         Ok((
@@ -479,7 +479,7 @@ pub mod oci_helpers {
 
         let stdout = String::from_utf8(output.stdout)?;
 
-        log::debug!("stdout: {}", stdout);
+        tracing::debug!("stdout: {}", stdout);
 
         let label: Vec<&str> = stdout.split('=').collect();
 
@@ -490,7 +490,7 @@ pub mod oci_helpers {
     }
 
     pub fn remove_content(digest: String) -> Result<()> {
-        log::debug!("cleaning content '{}'", digest);
+        tracing::debug!("cleaning content '{}'", digest);
         let success = Command::new("ctr")
             .arg("-n")
             .arg(TEST_NAMESPACE)

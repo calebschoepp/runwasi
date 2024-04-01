@@ -76,7 +76,7 @@ pub fn shim_main<'a, I>(
             run::<Shim>(&shim_client, config);
         }
         s if s == shim_daemon => {
-            log::info!("starting up!");
+            tracing::info!("starting up!");
             let s: ManagerService<Local<I>> = Default::default();
             let s = Arc::new(Box::new(s) as Box<dyn Manager + Send + Sync>);
             let service = create_manager(s);
@@ -87,7 +87,7 @@ pub fn shim_main<'a, I>(
                 .register_service(service);
 
             server.start().expect("failed to start daemon");
-            log::info!("server started!");
+            tracing::info!("server started!");
             let (_tx, rx) = channel::<()>();
             rx.recv().unwrap();
         }

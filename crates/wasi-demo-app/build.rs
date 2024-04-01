@@ -14,7 +14,7 @@ fn main() {}
 
 #[cfg(feature = "oci-v1-tar")]
 fn main() {
-    env_logger::init();
+    // env_logger::init();
 
     let out_dir = PathBuf::from(env::var("OUT_DIR").unwrap());
     let p = out_dir.join("img.tar");

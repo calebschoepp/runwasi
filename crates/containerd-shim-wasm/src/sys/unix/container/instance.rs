@@ -47,7 +47,7 @@ impl<E: Engine> SandboxInstance for Instance<E> {
         let (modules, platform) = containerd::Client::connect(cfg.get_containerd_address().as_str(), &namespace)?
             .load_modules(&id, &engine)
             .unwrap_or_else(|e| {
-                log::warn!("Error obtaining wasm layers for container {id}.  Will attempt to use files inside container image. Error: {e}");
+                tracing::warn!("Error obtaining wasm layers for container {id}.  Will attempt to use files inside container image. Error: {e}");
                 (vec![], Platform::default())
             });
 
@@ -70,7 +70,7 @@ impl<E: Engine> SandboxInstance for Instance<E> {
     /// The returned value should be a unique ID (such as a PID) for the instance.
     /// Nothing internally should be using this ID, but it is returned to containerd where a user may want to use it.
     fn start(&self) -> Result<u32, SandboxError> {
-        log::info!("starting instance: {}", self.id);
+        tracing::info!("starting instance: {}", self.id);
         // make sure we have an exit code by the time we finish (even if there's a panic)
         let guard = self.exit_code.set_guard_with(|| (137, Utc::now()));
 
@@ -90,11 +90,11 @@ impl<E: Engine> SandboxInstance for Instance<E> {
                 Ok(WaitStatus::Signaled(_, sig, _)) => sig as i32,
                 Ok(_) => 0,
                 Err(Errno::ECHILD) => {
-                    log::info!("no child process");
+                    tracing::info!("no child process");
                     0
                 }
                 Err(e) => {
-                    log::error!("waitpid failed: {e}");
+                    tracing::error!("waitpid failed: {e}");
                     137
                 }
             } as u32;
@@ -106,7 +106,7 @@ impl<E: Engine> SandboxInstance for Instance<E> {
 
     /// Send a signal to the instance
     fn kill(&self, signal: u32) -> Result<(), SandboxError> {
-        log::info!("sending signal {signal} to instance: {}", self.id);
+        tracing::info!("sending signal {signal} to instance: {}", self.id);
         let signal = Signal::try_from(signal as i32).map_err(|err| {
             SandboxError::InvalidArgument(format!("invalid signal number: {}", err))
         })?;
@@ -122,12 +122,12 @@ impl<E: Engine> SandboxInstance for Instance<E> {
     /// Delete any reference to the instance
     /// This is called after the instance has exited.
     fn delete(&self) -> Result<(), SandboxError> {
-        log::info!("deleting instance: {}", self.id);
+        tracing::info!("deleting instance: {}", self.id);
         match instance_exists(&self.rootdir, &self.id) {
             Ok(true) => {}
             Ok(false) => return Ok(()),
             Err(err) => {
-                log::error!("could not find the container, skipping cleanup: {}", err);
+                tracing::error!("could not find the container, skipping cleanup: {}", err);
                 return Ok(());
             }
         }
@@ -137,7 +137,7 @@ impl<E: Engine> SandboxInstance for Instance<E> {
                 container.delete(true)?;
             }
             Err(err) => {
-                log::error!("could not find the container, skipping cleanup: {}", err);
+                tracing::error!("could not find the container, skipping cleanup: {}", err);
             }
         }
         Ok(())

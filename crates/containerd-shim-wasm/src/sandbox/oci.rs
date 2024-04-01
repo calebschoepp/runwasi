@@ -44,7 +44,7 @@ pub(crate) fn setup_prestart_hooks(hooks: &Option<oci_spec::runtime::Hooks>) -> 
             // doesn't include arg0. So we have to make the split arg0 from the
             // rest of args.
             if let Some((arg0, args)) = hook.args().as_ref().and_then(|a| a.split_first()) {
-                log::debug!("run_hooks arg0: {:?}, args: {:?}", arg0, args);
+                tracing::debug!("run_hooks arg0: {:?}, args: {:?}", arg0, args);
 
                 #[cfg(unix)]
                 {
@@ -69,7 +69,7 @@ pub(crate) fn setup_prestart_hooks(hooks: &Option<oci_spec::runtime::Hooks>) -> 
             } else {
                 HashMap::new()
             };
-            log::debug!("run_hooks envs: {:?}", envs);
+            tracing::debug!("run_hooks envs: {:?}", envs);
 
             let mut hook_process = hook_command
                 .env_clear()

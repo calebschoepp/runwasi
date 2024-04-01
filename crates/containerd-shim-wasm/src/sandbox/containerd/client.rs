@@ -156,7 +156,7 @@ impl Client {
             let (tx, rx) = mpsc::channel(1);
 
             let len = data.len() as i64;
-            log::debug!("Writing {} bytes to content store", len);
+            tracing::debug!("Writing {} bytes to content store", len);
             let mut client = ContentClient::new(self.inner.clone());
 
             // Send write request with Stat action to containerd to let it know that we are going to write content
@@ -178,7 +178,7 @@ impl Client {
             let mut response_stream = match client.write(request_stream).await {
                 Ok(response_stream) => response_stream.into_inner(),
                 Err(e) if e.code() == Code::AlreadyExists => {
-                    log::info!("content already exists {}", expected.clone().to_string());
+                    tracing::info!("content already exists {}", expected.clone().to_string());
                     return Ok(expected);
                 }
                 Err(e) => return Err(ShimError::Containerd(e.to_string())),
@@ -195,7 +195,7 @@ impl Client {
                         expected
                     ))
                 })?;
-            log::debug!(
+            tracing::debug!(
                 "Starting to write content for layer {} with current status response {:?}",
                 expected,
                 response
@@ -217,7 +217,7 @@ impl Client {
                 };
                 let response =
                     send_message(write_request, &mut response_stream, &tx, &expected).await?;
-                log::debug!(
+                tracing::debug!(
                     "Writing content for layer {} at offset {} got response: {:?}",
                     expected,
                     offset,
@@ -238,7 +238,7 @@ impl Client {
             };
             let response =
                 send_message(commit_request, &mut response_stream, &tx, &expected).await?;
-            log::info!(
+            tracing::info!(
                 "Validating final response after writing content for layer {}: {:?}",
                 expected,
                 response
@@ -395,11 +395,11 @@ impl Client {
         // the only part we care about here is the platform values
         let platform: Platform = serde_json::from_slice(image_config)?;
         let Arch::Wasm = platform.architecture() else {
-            log::info!("manifest is not in WASM OCI image format");
+            tracing::info!("manifest is not in WASM OCI image format");
             return Ok((vec![], platform));
         };
 
-        log::info!("found manifest with WASM OCI image format");
+        tracing::info!("found manifest with WASM OCI image format");
         // This label is unique across runtimes and version of the shim running
         // a precompiled component/module will not work across different runtimes or versions
         let (can_precompile, precompile_id) = match engine.can_precompile() {
@@ -425,12 +425,12 @@ impl Client {
             .collect::<Result<Vec<_>>>()?;
 
         if layers.is_empty() {
-            log::info!("no WASM layers found in OCI image");
+            tracing::info!("no WASM layers found in OCI image");
             return Ok((vec![], platform));
         }
 
         if needs_precompile {
-            log::info!("precompiling layers for image: {}", container.image);
+            tracing::info!("precompiling layers for image: {}", container.image);
             let compiled_layers = match engine.precompile(&layers) {
                 Ok(compiled_layers) => {
                     if compiled_layers.len() != layers.len() {
@@ -441,7 +441,7 @@ impl Client {
                     compiled_layers
                 }
                 Err(e) => {
-                    log::error!("precompilation failed: {}", e);
+                    tracing::error!("precompilation failed: {}", e);
                     return Ok((layers, platform));
                 }
             };
@@ -449,7 +449,7 @@ impl Client {
             let mut layers_for_runtime = Vec::with_capacity(compiled_layers.len());
             for (i, compiled_layer) in compiled_layers.iter().enumerate() {
                 if compiled_layer.is_none() {
-                    log::debug!("no compiled layer using original");
+                    tracing::debug!("no compiled layer using original");
                     layers_for_runtime.push(layers[i].clone());
                     continue;
                 }
@@ -463,7 +463,7 @@ impl Client {
                 let precompiled_content =
                     self.save_content(compiled_layer.clone(), &precompile_id, labels)?;
 
-                log::debug!(
+                tracing::debug!(
                     "updating original layer {} with compiled layer {}",
                     original_config.digest(),
                     precompiled_content.digest
@@ -485,7 +485,7 @@ impl Client {
                 // We tell containerd to not garbage collect the new content until this image is removed from the system
                 // this ensures that we keep the content around after the lease is dropped
                 // We also save the precompiled flag here since the image labels can be mutated containerd, for example if the image is pulled twice
-                log::debug!(
+                tracing::debug!(
                     "updating image content with precompile digest to avoid garbage collection"
                 );
                 let mut image_content = self.get_info(&image_digest)?;
@@ -506,7 +506,7 @@ impl Client {
             return Ok((layers_for_runtime, platform));
         };
 
-        log::info!("using OCI layers");
+        tracing::info!("using OCI layers");
         Ok((layers, platform))
     }
 
@@ -523,14 +523,14 @@ impl Client {
             if let Some(label) = info.labels.get(precompile_id) {
                 // Safe to unwrap here since we already checked for the label's existence
                 digest_to_load = label.clone();
-                log::info!(
+                tracing::info!(
                     "layer {} has pre-compiled content: {} ",
                     info.digest,
                     &digest_to_load
                 );
             }
         }
-        log::debug!("loading digest: {} ", &digest_to_load);
+        tracing::debug!("loading digest: {} ", &digest_to_load);
         self.read_content(&digest_to_load)
             .map(|module| WasmLayer {
                 config: original_config.clone(),
@@ -539,8 +539,8 @@ impl Client {
             .or_else(|e| {
                 // handle content being removed from the content store out of band
                 if digest_to_load != *original_config.digest() {
-                    log::error!("failed to load precompiled layer: {}", e);
-                    log::error!("falling back to original layer and marking for recompile");
+                    tracing::error!("failed to load precompiled layer: {}", e);
+                    tracing::error!("falling back to original layer and marking for recompile");
                     *needs_precompile = can_precompile; // only mark for recompile if engine is capable
                     self.read_content(original_config.digest())
                         .map(|module| WasmLayer {
@@ -560,7 +560,7 @@ fn precompile_label(name: &str, version: &str) -> String {
 
 fn is_wasm_layer(media_type: &MediaType, supported_layer_types: &[&str]) -> bool {
     let supported = supported_layer_types.contains(&media_type.to_string().as_str());
-    log::debug!(
+    tracing::debug!(
         "layer type {} is supported: {}",
         media_type.to_string().as_str(),
         supported
@@ -886,7 +886,7 @@ mod tests {
         name: Option<String>,
         original: &[&oci_helpers::ImageContent],
     ) -> (String, String, oci_helpers::OCICleanup) {
-        let _ = env_logger::try_init();
+        // let _ = env_logger::try_init();
 
         let random_number = random_number();
         let image_name = name.unwrap_or(format!("localhost/test:latest{}", random_number));
@@ -995,7 +995,7 @@ mod tests {
 
                 // load the "precompiled" layer that was stored as precompiled for this layer
                 self.precompiled_layers.iter().all(|x| {
-                    log::warn!("layer: {:?}", x.0);
+                    tracing::warn!("layer: {:?}", x.0);
                     true
                 });
                 let precompiled = self.precompiled_layers[&key].clone();

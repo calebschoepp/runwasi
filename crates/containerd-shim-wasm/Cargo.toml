@@ -18,10 +18,9 @@ containerd-shim = { workspace = true }
 containerd-shim-wasm-test-modules = { workspace = true, optional = true }
 oci-tar-builder = { workspace = true, optional = true }
 crossbeam = { workspace = true }
-env_logger = { workspace = true, optional = true }
+# env_logger = { workspace = true, optional = true }
 git-version = "0.3.9"
 libc = { workspace = true }
-log = { workspace = true }
 oci-spec = { workspace = true }
 protobuf = { workspace = true }
 serde = { workspace = true }
@@ -36,6 +35,7 @@ wasmparser = "0.201.0"
 tokio-stream = { version = "0.1" }
 prost-types = "0.12" # should match version in containerd-shim
 sha256 = { workspace = true }
+tracing = "0.1.40"
 
 [target.'cfg(unix)'.dependencies]
 caps = "0.5"
@@ -53,10 +53,10 @@ ttrpc-codegen = { version = "0.4.2" }
 
 [dev-dependencies]
 containerd-shim-wasm-test-modules = { workspace = true }
-env_logger = { workspace = true }
+# env_logger = { workspace = true }
 tempfile = { workspace = true }
 oci-tar-builder = { workspace = true}
 rand= "0.8" 
 
 [features]
-testing = ["dep:containerd-shim-wasm-test-modules", "dep:env_logger", "dep:tempfile", "dep:oci-tar-builder"]
+testing = ["dep:containerd-shim-wasm-test-modules", "dep:tempfile", "dep:oci-tar-builder"]

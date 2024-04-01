@@ -19,8 +19,8 @@ use containerd_shim::protos::types::task::Status;
 use containerd_shim::publisher::RemotePublisher;
 use containerd_shim::util::IntoOption;
 use containerd_shim::{DeleteResponse, ExitSignal, TtrpcContext, TtrpcResult};
-use log::debug;
 use oci_spec::runtime::Spec;
+use tracing::debug;
 
 use crate::sandbox::instance::{Instance, InstanceConfig};
 use crate::sandbox::shim::events::{EventSender, RemoteEventSender, ToTimestamp};
@@ -396,7 +396,7 @@ impl<T: Instance + Sync + Send, E: EventSender> Task for Local<T, E> {
     }
 
     fn stats(&self, _ctx: &TtrpcContext, req: StatsRequest) -> TtrpcResult<StatsResponse> {
-        log::info!("stats: {:?}", req);
+        tracing::info!("stats: {:?}", req);
         Ok(self.task_stats(req)?)
     }
 }

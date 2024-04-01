@@ -39,7 +39,7 @@ impl Drop for LeaseGuard {
         let channel = match client {
             Ok(channel) => channel,
             Err(e) => {
-                log::error!(
+                tracing::error!(
                     "failed to connect to containerd: {}. lease may not be deleted",
                     e
                 );
@@ -55,8 +55,8 @@ impl Drop for LeaseGuard {
             let result = client.delete(req).await;
 
             match result {
-                Ok(_) => log::debug!("removed lease"),
-                Err(e) => log::error!("failed to remove lease: {}", e),
+                Ok(_) => tracing::debug!("removed lease"),
+                Err(e) => tracing::error!("failed to remove lease: {}", e),
             }
         });
     }

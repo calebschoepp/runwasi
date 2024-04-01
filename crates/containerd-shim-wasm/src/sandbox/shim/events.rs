@@ -3,8 +3,8 @@ use std::sync::Arc;
 use chrono::{DateTime, TimeZone};
 use containerd_shim::event::Event;
 use containerd_shim::publisher::RemotePublisher;
-use log::warn;
 use protobuf::well_known_types::timestamp::Timestamp;
+use tracing::warn;
 
 pub trait EventSender: Clone + Send + Sync + 'static {
     fn send(&self, event: impl Event);
